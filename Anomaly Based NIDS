@@ -1,0 +1,58 @@
+# pip install scapy
+
+import scapy.all as scapy
+from datetime import datetime
+
+# Global variable to store the baseline traffic
+baseline_traffic = {}
+
+# IP address of the system running the script
+host_ip = "127.0.0.1"  # Replace with your actual IP address
+
+def process_packet(packet):
+    # Check if the packet contains the IP layer
+    if scapy.IP in packet:
+        # Extract relevant information from the packet
+        src_ip = packet[scapy.IP].src
+        dst_ip = packet[scapy.IP].dst
+        protocol = packet[scapy.IP].proto  # Assuming IPv4, adjust for IPv6 if needed
+
+        # Skip anomaly detection for packets involving the host IP
+        if src_ip == host_ip or dst_ip == host_ip:
+            return
+
+        # Create a unique identifier for the connection
+        connection_id = f"{src_ip}_{dst_ip}_{protocol}"
+
+        # Check if the connection is in the baseline
+        if connection_id in baseline_traffic:
+            # Compare observed packet count with the baseline
+            if packet_count_anomaly(connection_id, baseline_traffic[connection_id]['observed_packets']):
+                print(f"{datetime.now()} - Anomaly detected for connection {connection_id}")
+
+        # Update or initialize the baseline for the connection
+        update_baseline(connection_id)
+
+def packet_count_anomaly(connection_id, observed_packets):
+    # Define a threshold for anomaly detection
+    threshold = observed_packets * 1.5
+
+    # Check if the observed_packets exceed the threshold
+    return observed_packets > threshold
+
+def update_baseline(connection_id):
+    # Update the observed packet count for the connection
+    if connection_id in baseline_traffic:
+        baseline_traffic[connection_id]['observed_packets'] += 1
+    else:
+        baseline_traffic[connection_id] = {'baseline_packets': 10, 'observed_packets': 1}
+
+# Specify the network interface name directly
+selected_interface = 'Wi-Fi'  # Replace with the desired interface name example: Wi-Fi or Ethernet
+
+# Sniff packets on the selected interface and process each packet
+def sniff_packets(interface):
+    scapy.sniff(iface=interface, store=False, prn=process_packet)
+
+# Example: Sniff packets on the selected Windows interface
+sniff_packets(selected_interface)

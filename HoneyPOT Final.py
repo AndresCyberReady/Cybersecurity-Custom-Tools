@@ -1,0 +1,159 @@
+# pip install requests
+import socket
+import threading
+from datetime import datetime
+import requests
+import os  # Import the os module for directory listing
+
+def charRemove(data):
+    return data.decode('utf-8').strip()
+
+def get_geolocation(ip):
+    response = requests.get(f'https://ipinfo.io/{ip}/json')
+    data = response.json()
+    return f"Geolocation: {data.get('city', '')}, {data.get('region', '')}, {data.get('country', '')}"
+
+def writeLog(addr, clt_name, clt_pass, geolocation):
+    log_file_path = r'C:\Users\andre\Desktop\HoneyPotLogs.txt'
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(log_file_path, 'a') as log_file:
+        log_file.write(f"{current_time} - Connection Established with IP Address: {addr[0]}, {geolocation}\n")
+
+def sendCmds(cmd, c):
+    # Implement sendCmds logic here
+    pass
+
+def storeCommands(user_cmd, addr):
+    # Implement storeCommands logic here
+    pass
+
+def ftpService(c):
+    c.sendall(bytes('220 Welcome to the FTP Server\r\n', 'utf-8'))
+    # Implement FTP service logic here
+    pass
+
+def httpService(c):
+    c.sendall(bytes('HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\nFake HTTP Response\r\n', 'utf-8'))
+    # Implement HTTP service logic here
+    pass
+
+def sshService(c):
+    try:
+        # Send a real SSH banner
+        banner = 'SSH-2.0-OpenSSH_7.6p1 Debian-4+deb9u7\r\n'
+        c.sendall(bytes(banner, 'utf-8'))
+
+        # Implement real SSH service logic here
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - SSH banner sent. Waiting for response...")
+
+        response = c.recv(1024)
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Received:", response.decode('utf-8'))
+
+    except Exception as e:
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - An error occurred in sshService: {e}")
+
+def telnetService(c):
+    c.sendall(bytes('Welcome to the Telnet Server\r\n', 'utf-8'))
+    # Implement Telnet service logic here
+    pass
+
+def cmdTerm(user_cmd, c, user_dict, addr):
+    if 'ls' in user_cmd:
+        # Implement real directory listing logic
+        # You can use the `os` module to get actual directories
+        current_dir = os.getcwd()
+        files = os.listdir(current_dir)
+        fake_output = '  '.join(files)
+        c.sendall(bytes(fake_output + '\n', 'utf-8'))
+    elif 'passwords' in user_cmd:
+        fake_output = "Access Denied"
+        c.sendall(bytes(fake_output + '\n', 'utf-8'))
+    else:
+        c.sendall(bytes("Command not found\n", "utf-8"))
+    return user_dict
+
+def threaded_client(c, addr, host, port):
+    c.settimeout(300)  # Set a timeout value (in seconds), adjust as needed
+
+    try:
+        # Send fake Kali Linux prompt
+        c.sendall(bytes('Kali GNU/Linux Rolling\n', 'utf-8'))
+        c.sendall(bytes('(', 'utf-8'))
+        c.sendall(bytes(addr[0], 'utf-8'))
+        c.sendall(bytes(') :anonymous\n', 'utf-8'))
+
+        # Handle authentication
+        clt_name = c.recv(1024)
+        clt_pass = c.recv(1024)
+        clt_name = charRemove(clt_name)
+        clt_pass = charRemove(clt_pass)
+
+        geolocation = get_geolocation(addr[0])
+        writeLog(addr, clt_name, clt_pass, geolocation)
+
+        if 'admin' in str(clt_name) and 'admin' in str(clt_pass):
+            c.sendall(bytes('You are getting into the system.\n', 'utf-8'))
+            sendCmds(0, c)
+
+            # Handle commands from the attacker
+            while True:
+                user_cmd = c.recv(1024)
+                if not user_cmd:
+                    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Connection closed by the remote client.")
+                    break
+
+                user_cmd = charRemove(user_cmd)
+                storeCommands(user_cmd, addr)
+
+                # Print the received command for debugging
+                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Received command from {addr}: {user_cmd}")
+
+                # Call cmdTerm to handle the command
+                cmdTerm(user_cmd, c, {}, addr)  # Pass addr to cmdTerm
+
+        elif 'USER anonymous' in str(clt_name):
+            ftpService(c)
+        elif 'GET' in str(clt_name):
+            httpService(c)
+        elif 'SSH' in str(clt_name):
+            sshService(c)
+        elif 'telnet' in str(clt_name):
+            telnetService(c)
+        else:
+            c.sendall(bytes(f'{datetime.now().strftime("%Y-%m-%d %H:%M:%S")} - Authentication Failed. Please Try Again.\n', 'utf-8'))
+
+    except socket.timeout:
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Connection timed out. Closing connection.")
+    except Exception as e:
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - An error occurred: {e}")
+    finally:
+        c.close()
+        print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - HoneyPot Server is still listening for new connections on {host}:{port}")
+
+def main():
+    server_lstnr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    host = '192.168.1.23'  # Change this to your actual IP address
+    port = 12345  # Use a non-standard port
+    server_lstnr.bind((host, port))
+    server_lstnr.listen(5)
+
+    print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - HoneyPot Server started. Listening on {host}:{port}")
+
+    while True:
+        try:
+            getClt, addr = server_lstnr.accept()
+            print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Connection Established with IP Address:", addr)
+
+            # Use threading.Thread instead of _thread
+            client_thread = threading.Thread(target=threaded_client, args=(getClt, addr, host, port))
+            client_thread.start()
+
+        except KeyboardInterrupt:
+            print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Server shutting down.")
+            break
+        except Exception as e:
+            print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - An error occurred: {e}")
+
+if __name__ == "__main__":
+    main()

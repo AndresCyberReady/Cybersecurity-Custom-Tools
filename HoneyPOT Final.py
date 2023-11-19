@@ -14,8 +14,8 @@ def get_geolocation(ip):
     return f"Geolocation: {data.get('city', '')}, {data.get('region', '')}, {data.get('country', '')}"
 
 def writeLog(addr, clt_name, clt_pass, geolocation):
-    log_file_path = r'C:\Users\andre\Desktop\HoneyPotLogs.txt'
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_file_path = r'C:\Users\Desktop\HoneyPotLogs.txt' # Change to where honeypot log file is located
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # Gives output of logs date and time format
 
     with open(log_file_path, 'a') as log_file:
         log_file.write(f"{current_time} - Connection Established with IP Address: {addr[0]}, {geolocation}\n")
@@ -133,7 +133,7 @@ def threaded_client(c, addr, host, port):
 
 def main():
     server_lstnr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    host = '192.168.1.23'  # Change this to your actual IP address
+    host = '127.0.0.1'  # Change this to your actual IP address
     port = 12345  # Use a non-standard port
     server_lstnr.bind((host, port))
     server_lstnr.listen(5)

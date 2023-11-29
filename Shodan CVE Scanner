@@ -1,0 +1,97 @@
+#pip install shodan==1.26.0
+#pip install colorama==0.4.4
+
+import shodan
+import sys
+from colorama import Fore, Style  # Import colorama for terminal colors
+
+def print_logo():
+    logo = f"""
+    {Fore.GREEN}
+    ╔═══╗───╔╗───────╔═══╗───────╔╗
+    ║╔═╗║───║║───────║╔═╗║───────║║
+    ║║─╚╬╗─╔╣╚═╦══╦═╗║╚═╝╠══╦══╦═╝╠╗─╔╗
+    ║║─╔╣║─║║╔╗║║═╣╔╝║╔╗╔╣║═╣╔╗║╔╗║║─║║
+    ║╚═╝║╚═╝║╚╝║║═╣║─║║║╚╣║═╣╔╗║╚╝║╚═╝║
+    ╚═══╩═╗╔╩══╩══╩╝─╚╝╚═╩══╩╝╚╩══╩═╗╔╝
+    ────╔═╝║──────────────────────╔═╝║
+    ────╚══╝──────────────────────╚══╝
+
+
+                    𝓑𝔂 𝓐𝓷𝓭𝓻𝓮𝓼 𝓣𝓻𝓮𝓿𝓲𝓷𝓸
+                    cyberready.world
+                    11-28-23 (10:15 PM)
+            Shodan CVE Scanner
+            Note* I am still working with matching the Port with Service this is a basic concept I would use the CLI scanner for a full report this just quickly shows you CVE based on IP
+                    
+              "In the world of hacking, knowledge is power.
+                 Embrace curiosity and unlock new possibilities."
+    {Style.RESET_ALL}
+    """
+
+    print(logo)
+
+def shodan_search(api_key, target_ip):
+    # Initialize the Shodan API
+    api = shodan.Shodan(api_key)
+
+    try:
+        # Search Shodan for the target IP
+        host = api.host(target_ip)
+
+        # Display information about the host
+        print(f"ISP: {''.join(map(str, host['isp']))}")
+        print(f"Country: {host.get('country_code', 'N/A')}")
+        print(f"Country Name: {host.get('country_name', 'N/A')}")
+        print(f"Organization: {host.get('org', 'N/A')}")
+        print(f"City: {host.get('city', 'N/A')}")
+        print(f"Operating System: {host.get('os', 'N/A')}")
+        print(f"Ports: {', '.join(map(str, host['ports']))}")
+        print(f"Domains: {', '.join(map(str, host['domains']))}")
+        print(f"ISP: {', '.join(map(str, host['isp']))}")
+        print(f"Last Updated: {''.join(map(str, host['last_update']))}")
+        print(f"Tags: {', '.join(map(str, host['tags']))}")
+        
+        # Display information about services on specific ports
+        print("\nServices:")
+        for item in host.get('data', []):
+            if isinstance(item, dict):
+                port_info = list(item.keys())[0]
+                service_data = item[port_info]
+
+                # Check if 'data' is a dictionary
+                if isinstance(service_data, dict) and isinstance(service_data.get('data'), dict):
+                    nested_data = service_data['data']
+                    # Extract product information from the nested data
+                    service_info = nested_data.get('product', 'N/A')
+                else:
+                    # If 'data' is not a dictionary, treat it as an integer
+                    service_info = 'N/A'
+
+                print(f"  Port {port_info}: {service_info}")
+
+        # Display vulnerability information
+        vulnerabilities = []
+        for item in host.get('vulns', {}):
+            vulnerabilities.append(item)
+        if vulnerabilities:
+            print("\nVulnerabilities:")
+            for vuln in vulnerabilities:
+                print(f"  - {vuln}")
+
+    except shodan.APIError as e:
+        print(f"Error: {e}")
+
+if __name__ == "__main__":
+    # Replace 'YOUR_SHODAN_API_KEY' with your actual Shodan API key
+    api_key = "YOUR_SHODAN_API_KEY"
+
+    if api_key == "YOUR_SHODAN_API_KEY":
+        print("Please replace 'YOUR_SHODAN_API_KEY' with your actual Shodan API key.")
+        sys.exit(1)
+
+    # Get the target IP address from the user
+    target_ip = input("Enter the target IP address: ")
+
+    # Perform the Shodan search
+    shodan_search(api_key, target_ip)
